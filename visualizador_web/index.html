@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visualizador de Población - DMQ</title>
+    <meta name="description" content="Visualizador interactivo de la población histórica y proyectada del Distrito Metropolitano de Quito (2001-2035).">
+    
+    <!-- Google Fonts: Inter and Outfit for a modern look -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Outfit:wght@500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="brand">
+                <div class="logo-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <path d="M3 3v18h18"/>
+                        <path d="M18 17V9"/>
+                        <path d="M13 17V5"/>
+                        <path d="M8 17v-3"/>
+                    </svg>
+                </div>
+                <div class="brand-text">
+                    <h1>DMQ Stats</h1>
+                    <span>Dinámica Poblacional</span>
+                </div>
+            </div>
+            
+            <div class="filters-container">
+                <h3>Filtros de Búsqueda</h3>
+                
+                <div class="filter-group">
+                    <label for="parroquia-select">Parroquia</label>
+                    <select id="parroquia-select" class="custom-select">
+                        <option value="ALL">Todo el DMQ</option>
+                        <!-- Options injected by JS -->
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label for="year-select">Año de Referencia</label>
+                    <select id="year-select" class="custom-select">
+                        <!-- Options injected by JS -->
+                    </select>
+                </div>
+
+                <button id="reset-filters" class="btn btn-secondary">Limpiar Filtros</button>
+            </div>
+            
+            <div class="sidebar-footer">
+                <p>Datos: IIC - 2001 a 2035</p>
+                <span class="badge badge-success">Actualizado</span>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            
+            <header class="app-header">
+                <div>
+                    <h2>Población del Distrito Metropolitano de Quito</h2>
+                    <p class="subtitle">Análisis histórico (Censos 2001, 2010, 2022) y proyecciones hasta el 2035</p>
+                </div>
+                <div class="header-actions">
+                    <div class="current-scope-badge" id="current-scope">Todo el DMQ</div>
+                </div>
+            </header>
+
+            <!-- KPIs -->
+            <section class="kpi-grid">
+                <div class="kpi-card">
+                    <div class="kpi-icon icon-blue">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="9" cy="7" r="4"></circle>
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                        </svg>
+                    </div>
+                    <div class="kpi-info">
+                        <h3>Población (Año Ref.)</h3>
+                        <p class="kpi-value" id="kpi-pop-current">--</p>
+                        <span class="kpi-sub" id="kpi-pop-year">Año: --</span>
+                    </div>
+                </div>
+                
+                <div class="kpi-card">
+                    <div class="kpi-icon icon-emerald">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                        </svg>
+                    </div>
+                    <div class="kpi-info">
+                        <h3>Proyección 2035</h3>
+                        <p class="kpi-value" id="kpi-pop-2035">--</p>
+                        <span class="kpi-sub">Población estimada</span>
+                    </div>
+                </div>
+
+                <div class="kpi-card">
+                    <div class="kpi-icon icon-amber">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
+                            <polyline points="17 6 23 6 23 12"></polyline>
+                        </svg>
+                    </div>
+                    <div class="kpi-info">
+                        <h3>Crecimiento</h3>
+                        <p class="kpi-value" id="kpi-growth">--</p>
+                        <span class="kpi-sub">Ref. vs 2035</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Charts Area -->
+            <section class="charts-grid">
+                
+                <!-- Evolution Line Chart -->
+                <div class="chart-card span-2">
+                    <div class="card-header">
+                        <h4>Evolución Poblacional (2001 - 2035)</h4>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="evolutionChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Gender Bar Chart -->
+                <div class="chart-card">
+                    <div class="card-header">
+                        <h4>Distribución por Sexo (Año Ref.)</h4>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="genderChart"></canvas>
+                    </div>
+                </div>
+
+            </section>
+            
+            <section class="table-section">
+                <div class="chart-card">
+                    <div class="card-header">
+                        <h4>Datos Detallados</h4>
+                        <span class="table-subtitle">Resultados del área seleccionada</span>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="data-table" id="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Año</th>
+                                    <th>Tipo</th>
+                                    <th>Población Total</th>
+                                    <th>Hombres</th>
+                                    <th>Mujeres</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Injected by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Credits Footer -->
+            <footer class="app-footer">
+                <div class="credits">
+                    <p><strong>Metodología, estimaciones y proyecciones de datos:</strong> Instituto de Investigaciones de la Ciudad (IIC).</p>
+                    <p><strong>Diseño y desarrollo del visualizador:</strong> [Nombre de tu Equipo o Dirección].</p>
+                </div>
+            </footer>
+            
+        </main>
+    </div>
+
+    <!-- Data & App Scripts -->
+    <script src="data.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

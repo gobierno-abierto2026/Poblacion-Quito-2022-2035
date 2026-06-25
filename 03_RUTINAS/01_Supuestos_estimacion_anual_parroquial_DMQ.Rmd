@@ -1,0 +1,723 @@
+---
+title: "Documento técnico de supuestos metodológicos"
+subtitle: "Estimación poblacional para las 65 parroquias urbanas y rurales del Distrito Metropolitano de Quito"
+author: "Instituto de Investigaciones de la Ciudad"
+output:
+  html_document:
+    toc: true
+    toc_depth: 3
+    number_sections: true
+    theme: flatly
+    code_folding: show
+    df_print: paged
+---
+
+<style>
+
+.title {
+  text-align: center;
+  font-size: 20px;
+}
+
+h1 { font-size: 20px; font-weight: 700;}
+h2 { font-size: 17px; font-weight: 700;}
+h3 { font-size: 15px; font-weight: 700;}
+h4 { font-size: 12px; font-weight: 700;}
+
+p {
+  text-align: justify;
+  line-height: 1.5;
+}
+</style>
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  warning = FALSE,
+  message = FALSE,
+  fig.width = 10,
+  fig.height = 6
+)
+```
+
+# Presentación
+
+El presente documento técnico tiene como finalidad sustentar los principales supuestos metodológicos utilizados para la estimación de la población a nivel de las 65 parroquias urbanas y rurales del cantón Quito.
+
+La metodología parte del reconocimiento de que las proyecciones oficiales disponibles se publican a nivel cantonal, mientras que determinados procesos de planificación, análisis territorial y toma de decisiones requieren aproximaciones a una escala menor. En este contexto, el ejercicio no busca reemplazar la proyección oficial del cantón Quito, sino distribuirla territorialmente entre las parroquias del Distrito Metropolitano de Quito mediante un procedimiento matemático basado en participaciones relativas.
+
+Por tanto, los resultados deben interpretarse como una estimación tendencial de desagregación territorial y no como una proyección demográfica completa. Esta diferencia es central, ya que el ejercicio no modela directamente los componentes demográficos de fecundidad, mortalidad y migración a escala parroquial, sino que utiliza la evolución histórica de la participación poblacional de cada parroquia dentro del total cantonal.
+
+# Objetivo del documento
+
+Sustentar técnicamente los supuestos metodológicos que respaldan la estimación de población de las 65 parroquias urbanas y rurales del Distrito Metropolitano de Quito, a partir de las proyecciones cantonales oficiales publicadas por el Instituto Nacional de Estadística y Censos.
+
+# Insumos utilizados
+
+Para la construcción de este documento se utilizan los siguientes insumos:
+
+1. Base censal parroquial consolidada para los años 2001, 2010 y 2022.
+2. Proyección oficial del total poblacional del cantón Quito para el período 2023–2035.
+3. División parroquial del Distrito Metropolitano de Quito.
+4. Criterios de agregación censal aplicados para parroquias urbanas y rurales.
+5. Participaciones relativas observadas de cada parroquia dentro del total cantonal en los años censales disponibles.
+
+
+```{r librerias, include=FALSE}
+
+# Carga de librerías
+
+library(openxlsx)
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(readxl)
+library(ggplot2)
+library(scales)
+library(flextable)
+library(tibble)
+```
+
+
+```{r carga-base, include=FALSE}
+
+# Carga de información base
+
+# En este apartado se cargan los archivos necesarios para reproducir los cálculos de respaldo de los supuestos metodológicos.
+
+pob_01_10_22 <- read_excel(
+  "../01_INSUMOS/SERIE_HISTORICA/pob_parroquia_final_2001_2010_2022.xlsx"
+)
+
+pob_01_10_22 <- pob_01_10_22 %>%
+  select(
+    area,
+    grupo_parroquia,
+    pob_total_2001,
+    pob_total_2010,
+    pob_total_2022,
+    prop_hombre,
+    prop_mujer
+  )
+```
+
+
+```{r base-censal-larga, include=FALSE}
+
+# Preparación de la base censal
+
+pob_censal_larga <- pob_01_10_22 %>%
+  select(area, grupo_parroquia, pob_total_2001, pob_total_2010, pob_total_2022) %>%
+  pivot_longer(
+    cols = starts_with("pob_total_"),
+    names_to = "anio",
+    values_to = "poblacion_parroquia"
+  ) %>%
+  mutate(
+    anio = as.numeric(str_remove(anio, "pob_total_")),
+    grupo_parroquia_limpio = str_squish(as.character(grupo_parroquia)),
+    grupo_parroquia_limpio = na_if(grupo_parroquia_limpio, ""),
+    sin_asignacion_parroquial = is.na(grupo_parroquia_limpio) |
+      grupo_parroquia_limpio %in% c(
+        "NA",
+        "N/A",
+        "SIN ASIGNACION",
+        "SIN ASIGNACIÓN",
+        "NO ASIGNADO",
+        "NO ASIGNADA"
+      )
+  )
+
+total_quito_censal <- pob_censal_larga %>%
+  group_by(anio) %>%
+  summarise(
+    poblacion_quito = sum(poblacion_parroquia, na.rm = TRUE),
+    poblacion_parroquias_validas = sum(
+      if_else(!sin_asignacion_parroquial, poblacion_parroquia, 0),
+      na.rm = TRUE
+    ),
+    poblacion_sin_asignacion = sum(
+      if_else(sin_asignacion_parroquial, poblacion_parroquia, 0),
+      na.rm = TRUE
+    ),
+    n_parroquias_validas = n_distinct(
+      grupo_parroquia_limpio[!sin_asignacion_parroquial],
+      na.rm = TRUE
+    ),
+    n_categorias_con_control = n_distinct(
+      grupo_parroquia_limpio,
+      na.rm = FALSE
+    ),
+    .groups = "drop"
+  )
+
+pob_censal_part <- pob_censal_larga %>%
+  left_join(total_quito_censal, by = "anio") %>%
+  mutate(
+    participacion_total_cantonal = poblacion_parroquia / poblacion_quito,
+    participacion_parroquias_validas = if_else(
+      !sin_asignacion_parroquial,
+      poblacion_parroquia / poblacion_parroquias_validas,
+      NA_real_
+    )
+  )
+```
+
+
+```{r proyeccion-quito, include=FALSE}
+
+# Proyección oficial del cantón Quito
+
+proy_quito <- tibble(
+  anio = c(
+    2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
+    2020, 2021, 2022, 2023, 2024, 2025, 2026, 2027, 2028, 2029,
+    2030, 2031, 2032, 2033, 2034, 2035
+  ),
+  proy_quito = c(
+    2292804, 2345150, 2396342, 2446079, 2496183, 2546687,
+    2595123, 2643569, 2698654, 2752623, 2782399, 2792784,
+    2804269, 2820059, 2838174, 2856667, 2875075, 2893151,
+    2910700, 2927602, 2943834, 2959453, 2974544, 2988948,
+    3002540, 3015497
+  )
+)
+
+proy_quito_futura <- proy_quito %>%
+  filter(anio >= 2023)
+
+anios_proyeccion <- proy_quito_futura$anio
+```
+
+# Supuestos
+
+## Supuesto 1. Consistencia entre la base censal procesada y el total cantonal oficial publicado por el INEC
+
+### Planteamiento y criterio de verificación
+
+El primer supuesto metodológico establece que la base censal de población, una vez procesada y depurada, permite reconstruir el total poblacional oficial del cantón Quito para los años censales disponibles: 2001, 2010 y 2022.
+
+Para verificar este supuesto, se compara el total obtenido a partir del procesamiento de la base censal de población con el total cantonal oficial publicado por el Instituto Nacional de Estadística y Censos (INEC) para Quito en cada año censal. Cabe precisar que ambos datos provienen del INEC; sin embargo, corresponden a niveles distintos de uso de la información: por un lado, la base censal permite realizar procesamientos específicos para el cálculo de indicadores; por otro, el total oficial publicado constituye el valor de referencia poblacional del cantón.
+
+En este sentido, la comparación no busca contrastar fuentes institucionales diferentes, sino comprobar que el tratamiento aplicado a la base censal permite reproducir el total oficial publicado para el cantón Quito. El supuesto se considera cumplido si la diferencia absoluta entre el total reconstruido desde la base censal procesada y el total cantonal oficial publicado por el INEC es igual a cero.
+
+En caso de existir registros sin asignación parroquial, estos deben mantenerse dentro del total cantonal y diferenciarse como una categoría de control, sin ser considerados como una parroquia adicional. Esta precisión es necesaria para asegurar que los filtros, criterios de residencia habitual, asignaciones territoriales y procesos de agregación utilizados sean consistentes con el universo poblacional oficial que servirá como base para la estimación parroquial.
+
+### Cálculo de verificación
+
+```{r supuesto1-total-oficial-censal, include=FALSE}
+total_quito_oficial_censal <- tibble(
+  anio = c(2001, 2010, 2022),
+  total_cantonal_oficial = c(
+    1838709,
+    2242615,
+    2679722
+  )
+)
+```
+
+```{r supuesto1-control-total-cantonal, include=FALSE}
+control_total_cantonal <- total_quito_censal %>%
+  rename(
+    total_reconstruido_base = poblacion_quito
+  ) %>%
+  left_join(
+    total_quito_oficial_censal,
+    by = "anio"
+  ) %>%
+  mutate(
+    diferencia_abs = total_reconstruido_base - total_cantonal_oficial,
+    diferencia_pct = if_else(
+      total_cantonal_oficial > 0,
+      (diferencia_abs / total_cantonal_oficial) * 100,
+      NA_real_
+    )
+  ) %>%
+  select(
+    anio,
+    total_reconstruido_base,
+    total_cantonal_oficial,
+    diferencia_abs,
+    diferencia_pct,
+    n_parroquias_validas
+  ) %>%
+  arrange(anio)
+```
+
+```{r supuesto1-tabla-total-cantonal, echo=FALSE, message=FALSE, warning=FALSE}
+flextable(control_total_cantonal) %>%
+  set_header_labels(
+    anio = "Año censal",
+    total_reconstruido_base = "Total reconstruido desde base censal",
+    total_cantonal_oficial = "Total cantonal oficial",
+    diferencia_abs = "Diferencia absoluta",
+    diferencia_pct = "Diferencia porcentual (%)",
+    n_parroquias_validas = "Parroquias válidas"
+  ) %>%
+  colformat_num(
+    j = c(
+      "total_reconstruido_base",
+      "total_cantonal_oficial",
+      "diferencia_abs"
+    ),
+    big.mark = ".",
+    decimal.mark = ",",
+    digits = 0
+  ) %>%
+  colformat_num(
+    j = "diferencia_pct",
+    decimal.mark = ",",
+    digits = 4
+  ) %>%
+  theme_booktabs() %>%
+  bold(part = "header") %>%
+  align(part = "header", align = "center") %>%
+  align(part = "body", align = "center") %>%
+  autofit()
+```
+
+```{r supuesto1-control-na, include=FALSE}
+control_sin_asignacion <- total_quito_censal %>%
+  left_join(
+    total_quito_oficial_censal,
+    by = "anio"
+  ) %>%
+  mutate(
+    porcentaje_sin_asignacion = if_else(
+      total_cantonal_oficial > 0,
+      (poblacion_sin_asignacion / total_cantonal_oficial) * 100,
+      NA_real_
+    )
+  ) %>%
+  select(
+    anio,
+    poblacion_sin_asignacion,
+    porcentaje_sin_asignacion,
+    n_parroquias_validas,
+    n_categorias_con_control
+  ) %>%
+  arrange(anio)
+```
+
+```{r supuesto1-tabla-na, echo=FALSE, message=FALSE, warning=FALSE}
+flextable(control_sin_asignacion) %>%
+  set_header_labels(
+    anio = "Año censal",
+    poblacion_sin_asignacion = "Población sin asignación parroquial",
+    porcentaje_sin_asignacion = "Porcentaje respecto al total cantonal (%)",
+    n_parroquias_validas = "Parroquias válidas",
+    n_categorias_con_control = "Categorías incluyendo control"
+  ) %>%
+  colformat_num(
+    j = "poblacion_sin_asignacion",
+    big.mark = ".",
+    decimal.mark = ",",
+    digits = 0
+  ) %>%
+  colformat_num(
+    j = "porcentaje_sin_asignacion",
+    decimal.mark = ",",
+    digits = 4
+  ) %>%
+  theme_booktabs() %>%
+  bold(part = "header") %>%
+  align(part = "header", align = "center") %>%
+  align(part = "body", align = "center") %>%
+  autofit()
+```
+
+### Resultado e interpretación
+
+La primera tabla muestra que el total reconstruido desde la base censal de población procesada coincide con el total cantonal oficial de Quito para los años censales analizados. Este resultado permite sostener que el tratamiento aplicado a la base censal reproduce el universo poblacional oficial publicado por el INEC y, por tanto, constituye un insumo válido para la estimación parroquial.
+
+No obstante, para los censos 2001 y 2010, el INEC señala que, **con fines de comparabilidad intercensal, se considera únicamente a la población que declaró residir habitualmente en Ecuador, excluyendo turistas u otras personas residentes en países del exterior**. En el caso de las personas que declararon como residencia habitual el cantón Quito, pero que fueron entrevistadas en otro lugar del país, no es posible reconstruir el sector censal correspondiente a su residencia habitual. Esta situación se explica por la estructura del formulario censal, en tanto este registra la zona y el sector del lugar donde se realizó la entrevista, pero no necesariamente la zona y el sector de la residencia habitual declarada.
+
+En consecuencia, durante el proceso de asignación territorial mediante el cruce geográfico entre sectores censales y límites parroquiales, estos casos no pueden ser asignados a una parroquia urbana específica. Sin embargo, se conservan dentro del total cantonal, dado que corresponden a población que declaró residencia habitual en el cantón Quito.
+
+La segunda tabla diferencia la población a la que no fue posible asignar una parroquia urbana específica. El universo territorial válido está conformado por 65 parroquias urbanas y rurales del DMQ, mientras que la categoría 66 corresponde a registros sin asignación parroquial. Esta categoría no constituye una parroquia adicional, sino un conjunto de casos para los cuales, con la información disponible, no fue posible reconstruir el código censal de 12 dígitos necesario para su asignación parroquial.
+
+### Decisión metodológica
+
+Con base en los resultados obtenidos, el supuesto se acepta. La base censal procesada reproduce el total cantonal oficial publicado por el INEC para los años censales analizados y permite sostener que el universo poblacional de referencia es consistente con los datos oficiales.
+
+No obstante, se incorpora una precisión metodológica: el universo territorial válido está conformado por las 65 parroquias urbanas y rurales del Distrito Metropolitano de Quito. La categoría 66 corresponde a registros sin asignación parroquial y se mantiene únicamente como categoría de control, sin ser considerada una unidad territorial adicional para la estimación parroquial.
+
+## Supuesto 2. Uso de la evolución histórica de la participación parroquial como base para la estimación tendencial
+
+### Planteamiento y criterio de verificación
+
+El segundo supuesto metodológico establece que la evolución histórica de la participación relativa de cada parroquia dentro del universo territorial válido permite aproximar una tendencia de distribución territorial de la población.
+
+Para este supuesto, el universo territorial válido corresponde a las 65 parroquias urbanas y rurales del Distrito Metropolitano de Quito. Por tanto, la participación relativa utilizada para construir las trayectorias históricas se calcula respecto del total de población asignada a estas 65 parroquias, excluyendo los registros sin asignación parroquial.
+
+Esta decisión responde a que los registros sin asignación parroquial, aunque forman parte del control del total cantonal, no constituyen una unidad territorial de estimación. En consecuencia, se conservan como categoría de control metodológico, pero no se incorporan al cálculo de las participaciones parroquiales ni a la modelación de sus trayectorias.
+
+La participación relativa se define como:
+
+$$
+s_{i,t} = \frac{P_{i,t}}{\sum_{i=1}^{65} P_{i,t}}
+$$
+
+Donde:
+
+- $s_{i,t}$ corresponde a la participación relativa de la parroquia $i$ en el año censal $t$;
+- $P_{i,t}$ corresponde a la población de la parroquia $i$ en el año censal $t$;
+- $\sum_{i=1}^{65} P_{i,t}$ corresponde a la población total asignada a las 65 parroquias urbanas y rurales del DMQ en el año censal $t$.
+
+Este supuesto es necesario porque la estimación parroquial 2023–2035 no se realiza proyectando de manera aislada la población absoluta de cada parroquia, sino estimando la trayectoria futura de su peso relativo dentro del universo territorial válido. En este sentido, la participación parroquial observada en los años censales 2001, 2010 y 2022 constituye la base empírica para aproximar el cambio en la distribución territorial de la población.
+
+El supuesto se considera cumplido si cada parroquia válida cuenta con información poblacional y participación relativa en los tres años censales analizados, y si dichas participaciones son valores no nulos, no negativos y comparables entre años.
+
+A diferencia de una proyección demográfica completa, este procedimiento no estima directamente los componentes de fecundidad, mortalidad y migración a escala parroquial. Su alcance consiste en utilizar la evolución histórica de las participaciones parroquiales para distribuir territorialmente la proyección oficial cantonal entre las 65 parroquias urbanas y rurales del DMQ.
+
+### Cálculo de verificación
+
+```{r supuesto2-base-validacion, include=FALSE}
+validacion_trayectoria_parroquial <- pob_censal_part %>%
+  filter(!sin_asignacion_parroquial) %>%
+  group_by(area, grupo_parroquia_limpio) %>%
+  summarise(
+    n_anios_disponibles = n_distinct(anio[!is.na(poblacion_parroquia)]),
+    anios_disponibles = paste(sort(unique(anio[!is.na(poblacion_parroquia)])), collapse = ", "),
+    poblacion_minima = min(poblacion_parroquia, na.rm = TRUE),
+    poblacion_maxima = max(poblacion_parroquia, na.rm = TRUE),
+    participacion_minima = min(participacion_parroquias_validas, na.rm = TRUE),
+    participacion_maxima = max(participacion_parroquias_validas, na.rm = TRUE),
+    tiene_na_poblacion = any(is.na(poblacion_parroquia)),
+    tiene_na_participacion = any(is.na(participacion_parroquias_validas)),
+    tiene_participacion_negativa = any(participacion_parroquias_validas < 0, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    cumple_trayectoria = n_anios_disponibles == 3 &
+      !tiene_na_poblacion &
+      !tiene_na_participacion &
+      !tiene_participacion_negativa
+  )
+```
+
+```{r supuesto2-resumen-validacion, include=FALSE}
+resumen_validacion_trayectoria <- validacion_trayectoria_parroquial %>%
+  summarise(
+    parroquias_evaluadas = n(),
+    parroquias_con_tres_cortes = sum(n_anios_disponibles == 3, na.rm = TRUE),
+    parroquias_con_na_poblacion = sum(tiene_na_poblacion, na.rm = TRUE),
+    parroquias_con_na_participacion = sum(tiene_na_participacion, na.rm = TRUE),
+    parroquias_con_participacion_negativa = sum(tiene_participacion_negativa, na.rm = TRUE),
+    parroquias_que_cumplen = sum(cumple_trayectoria, na.rm = TRUE)
+  )
+```
+
+```{r supuesto2-tabla-resumen-validacion, echo=FALSE, message=FALSE, warning=FALSE}
+flextable(resumen_validacion_trayectoria) %>%
+  set_header_labels(
+    parroquias_evaluadas = "Parroquias evaluadas",
+    parroquias_con_tres_cortes = "Parroquias con información en 2001, 2010 y 2022",
+    parroquias_con_na_poblacion = "Parroquias con población faltante",
+    parroquias_con_na_participacion = "Parroquias con participación faltante",
+    parroquias_con_participacion_negativa = "Parroquias con participación negativa",
+    parroquias_que_cumplen = "Parroquias que cumplen el criterio"
+  ) %>%
+  colformat_num(
+    j = c(
+      "parroquias_evaluadas",
+      "parroquias_con_tres_cortes",
+      "parroquias_con_na_poblacion",
+      "parroquias_con_na_participacion",
+      "parroquias_con_participacion_negativa",
+      "parroquias_que_cumplen"
+    ),
+    big.mark = ".",
+    decimal.mark = ",",
+    digits = 0
+  ) %>%
+  theme_booktabs() %>%
+  bold(part = "header") %>%
+  align(part = "header", align = "center") %>%
+  align(part = "body", align = "center") %>%
+  autofit()
+```
+
+```{r supuesto2-parroquias-no-cumplen, include=FALSE}
+parroquias_no_cumplen_trayectoria <- validacion_trayectoria_parroquial %>%
+  filter(!cumple_trayectoria) %>%
+  arrange(area, grupo_parroquia_limpio)
+```
+
+```{r supuesto2-tabla-no-cumplen, echo=FALSE, message=FALSE, warning=FALSE}
+if (nrow(parroquias_no_cumplen_trayectoria) > 0) {
+  flextable(parroquias_no_cumplen_trayectoria) %>%
+    set_header_labels(
+      area = "Área",
+      grupo_parroquia_limpio = "Parroquia",
+      n_anios_disponibles = "Años disponibles",
+      anios_disponibles = "Años con información",
+      poblacion_minima = "Población mínima",
+      poblacion_maxima = "Población máxima",
+      participacion_minima = "Participación mínima",
+      participacion_maxima = "Participación máxima",
+      tiene_na_poblacion = "NA en población",
+      tiene_na_participacion = "NA en participación",
+      tiene_participacion_negativa = "Participación negativa",
+      cumple_trayectoria = "Cumple criterio"
+    ) %>%
+    colformat_num(
+      j = c("poblacion_minima", "poblacion_maxima"),
+      big.mark = ".",
+      decimal.mark = ",",
+      digits = 0
+    ) %>%
+    colformat_num(
+      j = c("participacion_minima", "participacion_maxima"),
+      decimal.mark = ",",
+      digits = 6
+    ) %>%
+    theme_booktabs() %>%
+    bold(part = "header") %>%
+    align(part = "header", align = "center") %>%
+    align(part = "body", align = "center") %>%
+    autofit()
+}
+```
+
+### Resultado e interpretación
+
+La verificación muestra que las 65 parroquias urbanas y rurales del Distrito Metropolitano de Quito cuentan con información poblacional en los tres cortes censales utilizados para el análisis: 2001, 2010 y 2022. Además, no se identifican valores faltantes en población o participación relativa, ni participaciones negativas.
+
+Estos resultados confirman que la base censal procesada permite construir una trayectoria histórica mínima y comparable para cada parroquia. Esta condición es relevante porque la estimación posterior no parte de un único año censal, sino de la evolución observada del peso relativo de cada parroquia dentro del universo territorial válido conformado por las 65 parroquias del DMQ.
+
+La existencia de información completa para las 65 parroquias no implica que la trayectoria futura pueda conocerse con certeza, pero sí respalda el uso de los cortes censales disponibles como base empírica para estimar una tendencia de distribución territorial. En consecuencia, la participación parroquial observada en 2001, 2010 y 2022 constituye un insumo válido para aproximar la distribución futura de la población cantonal entre las parroquias del DMQ durante el período 2023–2035.
+
+### Decisión metodológica
+
+Con base en los resultados obtenidos, el supuesto se acepta. Las 65 parroquias evaluadas cumplen los criterios definidos para sustentar el uso de la evolución histórica de la participación relativa: cuentan con información en los tres años censales analizados, no presentan valores faltantes de población o participación, y no registran participaciones negativas.
+
+Por tanto, se considera metodológicamente viable utilizar la trayectoria histórica de participación parroquial como base para la estimación tendencial 2023–2035. Esta decisión se mantiene dentro del alcance del ejercicio: la estimación distribuye territorialmente la proyección oficial cantonal entre las 65 parroquias urbanas y rurales del DMQ, pero no reemplaza una proyección demográfica completa basada en fecundidad, mortalidad y migración a escala parroquial.
+
+## Supuesto 3. Aplicación de modelos funcionales simples para estimar la participación parroquial futura
+
+### Planteamiento y criterio de verificación
+
+El tercer supuesto metodológico establece que, a partir de la información histórica disponible, las participaciones relativas parroquiales pueden ser estimadas hacia el período 2023–2035 mediante modelos funcionales simples.
+
+Para este supuesto, las participaciones modeladas corresponden a las participaciones relativas calculadas sobre el universo territorial válido de las 65 parroquias urbanas y rurales del Distrito Metropolitano de Quito. Por tanto, los registros sin asignación parroquial no forman parte de la modelación, dado que no constituyen una unidad territorial de estimación.
+
+Para ello, se evalúan cuatro alternativas metodológicas: modelo lineal, modelo logarítmico, modelo exponencial y modelo polinómico de grado 2. El supuesto se considera cumplido si los cuatro modelos generan estimaciones para las 65 parroquias urbanas y rurales del DMQ y los 13 años del período 2023–2035, sin producir valores faltantes, negativos o iguales a cero.
+
+Esta verificación busca comprobar que las cuatro especificaciones son técnicamente estimables y producen valores válidos de participación relativa para continuar con la evaluación metodológica.
+
+### Cálculo de verificación
+
+```{r supuesto3-funcion-modelos, include=FALSE}
+proyectar_modelos_participacion <- function(datos_parroquia, anios_futuros) {
+  
+  datos_parroquia <- datos_parroquia %>%
+    arrange(anio) %>%
+    filter(
+      !is.na(participacion_parroquias_validas),
+      participacion_parroquias_validas > 0
+    )
+  
+  if (nrow(datos_parroquia) < 3) {
+    return(
+      bind_rows(
+        tibble(anio = anios_futuros, part_proy = NA_real_, modelo = "Lineal"),
+        tibble(anio = anios_futuros, part_proy = NA_real_, modelo = "Logarítmico"),
+        tibble(anio = anios_futuros, part_proy = NA_real_, modelo = "Exponencial"),
+        tibble(anio = anios_futuros, part_proy = NA_real_, modelo = "Polinómico grado 2")
+      )
+    )
+  }
+  
+  modelo_lineal <- lm(
+    participacion_parroquias_validas ~ anio,
+    data = datos_parroquia
+  )
+  
+  modelo_logaritmico <- lm(
+    participacion_parroquias_validas ~ log(anio),
+    data = datos_parroquia
+  )
+  
+  modelo_exponencial <- lm(
+    log(participacion_parroquias_validas) ~ anio,
+    data = datos_parroquia
+  )
+  
+  modelo_polinomico <- lm(
+    participacion_parroquias_validas ~ anio + I(anio^2),
+    data = datos_parroquia
+  )
+  
+  pred_lineal <- tibble(
+    anio = anios_futuros,
+    part_proy = as.numeric(
+      predict(modelo_lineal, newdata = tibble(anio = anios_futuros))
+    ),
+    modelo = "Lineal"
+  )
+  
+  pred_logaritmico <- tibble(
+    anio = anios_futuros,
+    part_proy = as.numeric(
+      predict(modelo_logaritmico, newdata = tibble(anio = anios_futuros))
+    ),
+    modelo = "Logarítmico"
+  )
+  
+  pred_exponencial <- tibble(
+    anio = anios_futuros,
+    part_proy = as.numeric(
+      exp(predict(modelo_exponencial, newdata = tibble(anio = anios_futuros)))
+    ),
+    modelo = "Exponencial"
+  )
+  
+  pred_polinomico <- tibble(
+    anio = anios_futuros,
+    part_proy = as.numeric(
+      predict(modelo_polinomico, newdata = tibble(anio = anios_futuros))
+    ),
+    modelo = "Polinómico grado 2"
+  )
+  
+  bind_rows(
+    pred_lineal,
+    pred_logaritmico,
+    pred_exponencial,
+    pred_polinomico
+  )
+}
+```
+
+```{r supuesto3-estimacion-modelos, include=FALSE}
+proyecciones_modelos_supuesto3 <- pob_censal_part %>%
+  filter(!sin_asignacion_parroquial) %>%
+  group_by(area, grupo_parroquia_limpio) %>%
+  group_modify(
+    ~ proyectar_modelos_participacion(
+      datos_parroquia = .x,
+      anios_futuros = anios_proyeccion
+    )
+  ) %>%
+  ungroup()
+```
+
+```{r supuesto3-resumen-modelos, include=FALSE}
+n_parroquias_supuesto3 <- pob_censal_part %>%
+  filter(!sin_asignacion_parroquial) %>%
+  summarise(n = n_distinct(grupo_parroquia_limpio)) %>%
+  pull(n)
+
+n_anios_supuesto3 <- length(anios_proyeccion)
+
+resumen_modelos_supuesto3 <- proyecciones_modelos_supuesto3 %>%
+  group_by(modelo) %>%
+  summarise(
+    parroquias_proyectadas = n_distinct(grupo_parroquia_limpio),
+    anios_proyectados = n_distinct(anio),
+    registros_esperados = n_parroquias_supuesto3 * n_anios_supuesto3,
+    registros_estimados = n(),
+    participaciones_faltantes = sum(is.na(part_proy)),
+    participaciones_negativas = sum(part_proy < 0, na.rm = TRUE),
+    participaciones_cero = sum(part_proy == 0, na.rm = TRUE),
+    participacion_minima = min(part_proy, na.rm = TRUE),
+    participacion_maxima = max(part_proy, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  arrange(modelo)
+```
+
+```{r supuesto3-tabla-resumen-modelos, echo=FALSE, message=FALSE, warning=FALSE}
+flextable(resumen_modelos_supuesto3) %>%
+  set_header_labels(
+    modelo = "Modelo",
+    parroquias_proyectadas = "Parroquias proyectadas",
+    anios_proyectados = "Años proyectados",
+    registros_esperados = "Registros esperados",
+    registros_estimados = "Registros estimados",
+    participaciones_faltantes = "Participaciones faltantes",
+    participaciones_negativas = "Participaciones negativas",
+    participaciones_cero = "Participaciones iguales a cero",
+    participacion_minima = "Participación mínima estimada",
+    participacion_maxima = "Participación máxima estimada"
+  ) %>%
+  colformat_num(
+    j = c(
+      "parroquias_proyectadas",
+      "anios_proyectados",
+      "registros_esperados",
+      "registros_estimados",
+      "participaciones_faltantes",
+      "participaciones_negativas",
+      "participaciones_cero"
+    ),
+    big.mark = ".",
+    decimal.mark = ",",
+    digits = 0
+  ) %>%
+  colformat_num(
+    j = c("participacion_minima", "participacion_maxima"),
+    decimal.mark = ",",
+    digits = 8
+  ) %>%
+  theme_booktabs() %>%
+  bold(part = "header") %>%
+  align(part = "header", align = "center") %>%
+  align(part = "body", align = "center") %>%
+  autofit()
+```
+
+```{r supuesto3-casos-negativos, include=FALSE}
+casos_negativos_supuesto3 <- proyecciones_modelos_supuesto3 %>%
+  filter(!is.na(part_proy), part_proy < 0) %>%
+  arrange(modelo, anio, grupo_parroquia_limpio)
+```
+
+```{r supuesto3-tabla-casos-negativos, echo=FALSE, message=FALSE, warning=FALSE}
+if (nrow(casos_negativos_supuesto3) > 0) {
+  flextable(casos_negativos_supuesto3) %>%
+    set_header_labels(
+      area = "Área",
+      grupo_parroquia_limpio = "Parroquia",
+      anio = "Año",
+      part_proy = "Participación estimada",
+      modelo = "Modelo"
+    ) %>%
+    colformat_num(
+      j = "part_proy",
+      decimal.mark = ",",
+      digits = 8
+    ) %>%
+    theme_booktabs() %>%
+    bold(part = "header") %>%
+    align(part = "header", align = "center") %>%
+    align(part = "body", align = "center") %>%
+    autofit()
+}
+```
+### Resultado e interpretación
+
+La verificación muestra que los cuatro modelos funcionales evaluados (exponencial, lineal, logarítmico y polinómico de grado 2) generan estimaciones completas para las 65 parroquias urbanas y rurales del Distrito Metropolitano de Quito durante los 13 años del período 2023–2035. En todos los casos se obtienen 845 registros estimados, equivalentes a la combinación de 65 parroquias por 13 años de proyección.
+
+Asimismo, no se identifican participaciones faltantes, negativas o iguales a cero en ninguno de los cuatro modelos. Este resultado es metodológicamente relevante, ya que confirma que las especificaciones funcionales aplicadas producen valores admisibles de participación relativa para todas las parroquias y años proyectados.
+
+Las participaciones mínimas estimadas se mantienen por encima de cero en todos los modelos. El valor mínimo se observa en el modelo polinómico de grado 2, con una participación de 0,00003963092, mientras que el valor máximo se registra en el modelo exponencial, con una participación de 0,1479599. Esto indica que, aunque los modelos presentan distintos rangos de estimación, todos generan participaciones positivas y, por tanto, interpretables en términos de distribución poblacional relativa.
+
+En consecuencia, la aplicación de los cuatro modelos permite construir trayectorias futuras de participación parroquial sin generar inconsistencias básicas como valores faltantes, negativos o nulos. No obstante, la diferencia entre los valores mínimos y máximos estimados evidencia que cada modelo produce una forma distinta de extrapolación, por lo que la selección del modelo a utilizar no debe basarse únicamente en su capacidad de generar valores válidos, sino también en criterios adicionales de ajuste, estabilidad y consistencia territorial.
+
+### Decisión metodológica
+
+Con base en los resultados obtenidos, el supuesto se acepta. Los cuatro modelos funcionales simples evaluados (exponencial, lineal, logarítmico y polinómico de grado 2) pueden ser aplicados para estimar la participación relativa futura de las 65 parroquias del DMQ durante el período 2023–2035.
+
+La aceptación del supuesto se sustenta en que todos los modelos generan el número esperado de registros, cubren la totalidad de parroquias y años proyectados, y no producen participaciones faltantes, negativas o iguales a cero. Por tanto, los cuatro modelos se consideran alternativas técnicamente estimables para continuar con la evaluación metodológica.
+
+Sin embargo, esta aceptación no implica que los cuatro modelos sean igualmente adecuados para la estimación final. La selección del modelo a utilizar deberá resolverse en una etapa posterior, considerando criterios de desempeño predictivo, estabilidad de las trayectorias, consistencia territorial y capacidad de preservar la coherencia con la proyección oficial cantonal.
+
+# Consideraciones finales
+
+La revisión de los supuestos metodológicos permite sustentar las condiciones previas necesarias para la estimación poblacional de las 65 parroquias urbanas y rurales del Distrito Metropolitano de Quito.
+
+En primer lugar, se verificó que la base censal procesada reproduce el total cantonal oficial publicado por el INEC para los años censales analizados, diferenciando los registros sin asignación parroquial como categoría de control metodológico. En segundo lugar, se comprobó que las 65 parroquias válidas cuentan con información completa y comparable en los tres cortes censales considerados, lo que permite construir una trayectoria histórica mínima de participación relativa. En tercer lugar, se verificó que los cuatro modelos funcionales evaluados generan estimaciones completas y admisibles de participación parroquial para el período 2023–2035.
+
+En conjunto, estos resultados respaldan el uso de participaciones relativas y modelos funcionales simples como base para la estimación tendencial de población parroquial. No obstante, los supuestos aquí evaluados no reemplazan la descripción completa del procedimiento de estimación, sino que sustentan sus condiciones de partida. Los pasos operativos posteriores, como la normalización de participaciones, el ajuste al total cantonal oficial y la selección del modelo final, forman parte del proceso metodológico de estimación y deben ser desarrollados en el documento técnico principal.

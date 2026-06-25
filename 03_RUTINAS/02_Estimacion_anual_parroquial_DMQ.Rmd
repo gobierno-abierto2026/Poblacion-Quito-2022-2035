@@ -1,0 +1,1282 @@
+---
+title: "Desagregación territorial de proyecciones poblacionales del Distrito Metropolitano de Quito"
+subtitle: "Estimación anual parroquial 2023–2035 mediante modelos de participación relativa"
+author: "Instituto de Investigaciones de la Ciudad"
+output:
+  html_document:
+    toc: true
+    toc_depth: 3
+    number_sections: true
+    theme: flatly
+    code_folding: show
+    df_print: paged
+---
+
+<style>
+
+.title {
+  text-align: center;
+  font-size: 20px;
+}
+
+h1 { font-size: 20px; font-weight: 700;}
+h2 { font-size: 17px; font-weight: 700;}
+h3 { font-size: 15px; font-weight: 700;}
+h4 { font-size: 12px; font-weight: 700;}
+
+p {
+  text-align: justify;
+  line-height: 1.5;
+}
+</style>
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  warning = FALSE,
+  message = FALSE,
+  fig.width = 10,
+  fig.height = 6
+)
+```
+
+# Planteamiento del problema
+
+A partir de la publicación oficial de las *Estimaciones y Proyecciones de la Población de Ecuador, revisión 2024*, el Instituto Nacional de Estadística y Censos presenta información actualizada a nivel nacional, provincial, cantonal y por área de residencia. En el caso del nivel cantonal, el boletín técnico publicado en diciembre de 2025 incluye estimaciones y proyecciones para el período 2010–2035, por lo que constituye la fuente oficial de referencia para el total poblacional del cantón Quito.
+
+No obstante, para el Distrito Metropolitano de Quito, la disponibilidad de información únicamente a nivel cantonal resulta insuficiente para determinados procesos de planificación, análisis territorial y toma de decisiones institucionales. La gestión municipal requiere aproximaciones a escalas menores que permitan identificar dinámicas diferenciadas entre las 65 parroquias del DMQ, especialmente para el análisis de demanda de servicios, la focalización de intervenciones, la priorización territorial y el seguimiento de brechas espaciales.
+
+En este contexto, surge la necesidad de construir una metodología de desagregación territorial que permita distribuir la proyección total oficial del cantón Quito hacia el nivel parroquial. El propósito no es reemplazar ni recalcular la proyección cantonal publicada por el INEC, sino utilizarla como base y restricción de consistencia, de manera que las estimaciones parroquiales resultantes mantengan coherencia con el total oficial de Quito para cada año del período 2023–2035.
+
+Para ello, se propone un procedimiento matemático basado en la evolución de la participación relativa de cada parroquia dentro del total poblacional del cantón. Este enfoque permite incorporar la dinámica histórica observada en los censos de población de 2001, 2010 y 2022, y, al mismo tiempo, garantizar que la suma de las poblaciones estimadas para las 65 parroquias coincida con la proyección total cantonal disponible.
+
+# Limitaciones para una proyección demográfica parroquial completa
+
+Las proyecciones demográficas completas suelen sustentarse en el método de componentes demográficos por cohorte. Este enfoque considera la dinámica de la fecundidad, mortalidad y migración, y se basa en la ecuación compensadora de la población:
+
+\[
+P_{t+n} = P_t + N - D + I - E
+\]
+
+Donde:
+
+- \(P_{t+n}\): población al final del período;
+- \(P_t\): población inicial;
+- \(N\): nacimientos;
+- \(D\): defunciones;
+- \(I\): inmigración;
+- \(E\): emigración.
+
+Aunque este método es robusto para niveles geográficos amplios, su aplicación a escala parroquial presenta limitaciones relevantes. Para estimar una proyección demográfica completa por parroquia se requeriría información confiable, periódica y territorialmente representativa sobre nacimientos, defunciones, inmigración y emigración. En unidades territoriales pequeñas, estos registros pueden presentar subregistro, inestabilidad estadística o dificultad de asignación territorial, especialmente en el caso de la migración.
+
+Por esta razón, en lugar de construir una proyección demográfica completa por componentes para cada parroquia, se propone un enfoque matemático de desagregación territorial. Este enfoque parte del total oficial proyectado del cantón Quito y lo distribuye hacia las parroquias mediante la evolución histórica de su participación relativa dentro del total cantonal.
+
+# Enfoque metodológico propuesto
+
+La metodología se basa en proyectar la participación relativa de cada parroquia dentro del total poblacional del cantón Quito, en lugar de proyectar directamente la población absoluta de cada parroquia.
+
+Este enfoque tiene cuatro ventajas principales:
+
+1. Mantiene consistencia con la proyección total oficial del cantón Quito;
+2. Evita que las proyecciones parroquiales crezcan de manera independiente y se alejen del total cantonal;
+3. Incorpora la dinámica histórica observada en los censos 2001, 2010 y 2022;
+4. Permite comparar distintos modelos matemáticos de evolución de la participación parroquial.
+
+La población proyectada de cada parroquia se obtiene en tres momentos:
+
+1. Cálculo de la participación censal observada;
+2. Estimación y proyección de la participación parroquial mediante distintos modelos;
+3. Normalización anual de las participaciones y asignación del total oficial del cantón Quito.
+
+# Formulación general del procedimiento
+
+Para cada parroquia \(i\) y año censal \(t\), se calcula la participación relativa:
+
+\[
+s_{i,t} = \frac{P_{i,t}}{P_{Q,t}}
+\]
+
+Donde:
+
+- \(s_{i,t}\): participación de la parroquia \(i\) en el total cantonal en el año \(t\);
+- \(P_{i,t}\): población de la parroquia \(i\) en el año \(t\);
+- \(P_{Q,t}\): población total del cantón Quito en el año \(t\).
+
+Luego, para cada modelo \(m\), se estima una participación preliminar:
+
+\[
+\hat{s}_{i,T}^{(m)}
+\]
+
+Dado que las participaciones proyectadas se estiman de forma independiente para cada parroquia, estas pueden no sumar exactamente 1 en cada año. Por ello, se normalizan de la siguiente forma:
+
+\[
+s_{i,T}^{ajustada(m)} =
+\frac{\hat{s}_{i,T}^{(m)}}{\sum_{i=1}^{n} \hat{s}_{i,T}^{(m)}}
+\]
+
+Finalmente, la población proyectada de cada parroquia se obtiene multiplicando la participación ajustada por la proyección total oficial del cantón Quito:
+
+\[
+P_{i,T}^{proy(m)} =
+s_{i,T}^{ajustada(m)} \times P_{Q,T}^{oficial}
+\]
+
+# Construcción de la base censal parroquial 2001, 2010 y 2022
+
+Antes de aplicar los modelos de desagregación territorial, se construyó una base de población por parroquia para el Distrito Metropolitano de Quito, utilizando la información de los censos de población de 2001, 2010 y 2022. Esta base constituye el insumo principal para estimar la evolución histórica de la participación relativa de cada parroquia dentro del total poblacional del cantón Quito.
+
+La construcción de la base requirió un tratamiento diferenciado entre parroquias rurales y urbanas, debido a la forma en que se encuentra organizada la información censal. Para las parroquias rurales, la agregación se realizó directamente a partir de la variable censal PARROQ, disponible en las bases censales. Esta variable permite identificar la parroquia rural correspondiente, por lo que la población fue calculada mediante la suma de las personas o de la población registrada en los sectores censales asociados a cada código parroquial.
+
+En el caso de las parroquias urbanas, el procedimiento fue distinto. En las bases censales, las parroquias urbanas del Distrito Metropolitano de Quito se encuentran agrupadas bajo el código correspondiente a Quito urbano, por lo que no es posible obtener directamente la población de cada una de las parroquias urbanas a partir de la variable PARROQ. Por esta razón, se realizó un proceso de asignación espacial complementario.
+
+Para ello, se utilizó la capa geográfica de división parroquial disponible para el Distrito Metropolitano de Quito. Mediante herramientas de análisis espacial, se asignó a cada sector censal urbano el código de la parroquia urbana correspondiente, tomando como referencia la ubicación del centroide del sector censal respecto a los límites parroquiales. Es decir, cada sector urbano fue asociado a la parroquia dentro de la cual se localizaba su centroide.
+
+Una vez asignado el código de parroquia urbana a cada sector censal, se procedió a agregar la población de los sectores pertenecientes a cada parroquia. De esta manera, se reconstruyó la población de las parroquias urbanas para cada año censal, haciendo comparable la estructura territorial urbana con la rural.
+
+Para los años 2001 y 2010, la agregación parroquial se realizó a partir de las bases censales de personas, contabilizando los registros individuales asociados a cada sector censal y, posteriormente, a cada parroquia. En estos años, el conteo de población, así como las desagregaciones por sexo y grupos quinquenales de edad, se obtuvieron directamente desde las bases persona.
+
+Para el año 2022, el procedimiento tuvo una particularidad metodológica. El total de población por parroquia no se calculó desde la base persona, sino desde la base de sectores censales anonimizados, debido a que esta conserva el total poblacional completo por sector. Esta decisión se tomó porque, al utilizar únicamente la base persona para la asignación parroquial, se pierde un total de 54 personas como efecto del proceso de anonimización. Por tanto, para garantizar que el total poblacional de 2022 sea completo, se utilizó la población registrada en la base de sectores anonimizados.
+
+Bajo esta misma lógica, en 2022 las parroquias urbanas fueron agregadas mediante la asignación espacial de sectores censales anonimizados a parroquias, utilizando el centroide del sector y la capa de límites parroquiales del DMQ. En cambio, las parroquias rurales fueron agregadas directamente a partir del código parroquial censal, manteniendo el criterio de clasificación mediante la variable PARROQ o su equivalente en la base sectorial.
+
+En síntesis, la base censal parroquial se construyó bajo los siguientes criterios:
+
+```{r tabla-criterios-agregacion, echo=FALSE, message=FALSE, warning=FALSE}
+library(flextable)
+library(tibble)
+library(dplyr)
+
+tabla_criterios <- tribble(
+  ~anio, ~tipo, ~fuente, ~criterio,
+  "2001", "Parroquias rurales", "Base persona censal", "Agregación directa mediante la variable censal PARROQ",
+  "2001", "Parroquias urbanas", "Base persona censal + correspondencia espacial", "Asignación espacial de sectores censales a parroquias mediante el centroide del sector y la capa de límites parroquiales del DMQ",
+  "2010", "Parroquias rurales", "Base persona censal", "Agregación directa mediante la variable censal PARROQ",
+  "2010", "Parroquias urbanas", "Base persona censal + correspondencia espacial", "Asignación espacial de sectores censales a parroquias mediante el centroide del sector y la capa de límites parroquiales del DMQ",
+  "2022", "Parroquias rurales", "Base de sectores censales anonimizados", "Agregación directa mediante el código parroquial censal",
+  "2022", "Parroquias urbanas", "Base de sectores censales anonimizados + correspondencia espacial", "Asignación espacial de sectores censales a parroquias mediante el centroide del sector y la capa de límites parroquiales del DMQ"
+)
+
+tabla_criterios <- tabla_criterios %>%
+  mutate(across(everything(), enc2utf8))
+
+flextable(tabla_criterios) %>%
+  set_header_labels(
+    anio = "Año",
+    tipo = "Tipo de parroquia",
+    fuente = "Fuente utilizada",
+    criterio = "Criterio de agregación utilizado"
+  ) %>%
+  theme_booktabs() %>%
+  bold(part = "header") %>%
+  align(part = "header", align = "center") %>%
+  align(j = c("anio", "tipo"), align = "center", part = "body") %>%
+  align(j = c("fuente", "criterio"), align = "left", part = "body") %>%
+  valign(valign = "top", part = "all") %>%
+  fontsize(size = 8.5, part = "all") %>%
+  width(j = "anio", width = 0.5) %>%
+  width(j = "tipo", width = 1.4) %>%
+  width(j = "fuente", width = 2.2) %>%
+  width(j = "criterio", width = 3.4) %>%
+  autofit()
+```
+
+El resultado de este procedimiento fue una base consolidada con una fila por parroquia y las poblaciones observadas en los años 2001, 2010 y 2022. Esta base permite calcular la participación relativa de cada parroquia dentro del total del cantón Quito y constituye el punto de partida para la posterior estimación de las proyecciones parroquiales.
+
+La base final contiene las siguientes variables principales:
+
+```{r tabla-variables-base-final, echo=FALSE, message=FALSE, warning=FALSE}
+library(flextable)
+library(tibble)
+
+tabla_variables <- tribble(
+  ~Variable, ~Descripcion,
+  "area", "Clasificación de la parroquia como urbana o rural",
+  "grupo_parroquia", "Identificador oficial de la parroquia",
+  "pob_total_2001", "Población parroquial observada para el Censo 2001",
+  "pob_total_2010", "Población parroquial observada para el Censo 2010",
+  "pob_total_2022", "Población parroquial observada para el Censo 2022",
+  "prop_hombre", "Proporción de población parroquial de hombres observada para el Censo 2022",
+  "prop_mujer", "Proporción de población parroquial de mujeres observada para el Censo 2022"
+)
+
+flextable(tabla_variables) %>%
+  set_header_labels(
+    Variable = "Variable",
+    Descripcion = "Descripción"
+  ) %>%
+  theme_booktabs() %>%
+  bold(part = "header") %>%
+  align(part = "header", align = "center") %>%
+  align(j = "Variable", align = "left", part = "body") %>%
+  align(j = "Descripcion", align = "left", part = "body") %>%
+  valign(valign = "top", part = "all") %>%
+  fontsize(size = 8.5, part = "all") %>%
+  width(j = "Variable", width = 1.7) %>%
+  width(j = "Descripcion", width = 5.8) %>%
+  autofit()
+```
+
+Cabe precisar que, para 2022, el total poblacional parroquial proviene de la base sectores anonimizados, mientras que las proporciones por sexo provienen de la base persona.
+
+Este procesamiento previo fue necesario para garantizar que la unidad territorial de análisis sea comparable entre los tres cortes censales y permita estimar de forma consistente la evolución de las participaciones parroquiales dentro del DMQ.
+
+# Carga de librerías y base de datos
+
+```{r librerias}
+library(openxlsx)
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(readxl)
+library(ggplot2)
+library(scales)
+library(writexl)
+```
+
+```{r carga-base}
+pob_01_10_22 <- read_excel(
+  "../01_INSUMOS/SERIE_HISTORICA/pob_parroquia_final_2001_2010_2022.xlsx"
+)
+
+pob_01_10_22 <- pob_01_10_22 %>%
+  select(area, grupo_parroquia, pob_total_2001, pob_total_2010, pob_total_2022, prop_hombre, prop_mujer)
+
+pob_01_10_22 <- pob_01_10_22 %>%
+  filter(!is.na(grupo_parroquia))
+```
+
+# Preparación de la base censal
+
+Se transforma la base original a formato largo, de manera que cada fila represente una parroquia en un año censal determinado. Posteriormente se calcula el total poblacional del cantón Quito para cada año y la participación de cada parroquia en ese total.
+
+```{r base-censal-larga}
+pob_censal_larga <- pob_01_10_22 %>%
+  select(area, grupo_parroquia, pob_total_2001, pob_total_2010, pob_total_2022) %>%
+  pivot_longer(
+    cols = starts_with("pob_total_"),
+    names_to = "anio",
+    values_to = "poblacion_parroquia"
+  ) %>%
+  mutate(
+    anio = as.numeric(str_remove(anio, "pob_total_"))
+  )
+
+total_quito_censal <- pob_censal_larga %>%
+  group_by(anio) %>%
+  summarise(
+    poblacion_quito = sum(poblacion_parroquia, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+pob_censal_part <- pob_censal_larga %>%
+  left_join(total_quito_censal, by = "anio") %>%
+  mutate(
+    participacion = poblacion_parroquia / poblacion_quito
+  )
+
+pob_censal_part
+```
+
+# Proyección total oficial del cantón Quito
+
+La proyección total de Quito se incorpora como restricción de consistencia. Es decir, las poblaciones parroquiales estimadas deben sumar exactamente el total cantonal oficial para cada año.
+
+```{r proyeccion-quito}
+proy_quito <- tibble(
+  anio = c(
+    2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
+    2020, 2021, 2022, 2023, 2024, 2025, 2026, 2027, 2028, 2029,
+    2030, 2031, 2032, 2033, 2034, 2035
+  ),
+  proy_quito = c(
+    2292804, 2345150, 2396342, 2446079, 2496183, 2546687,
+    2595123, 2643569, 2698654, 2752623, 2782399, 2792784,
+    2804269, 2820059, 2838174, 2856667, 2875075, 2893151,
+    2910700, 2927602, 2943834, 2959453, 2974544, 2988948,
+    3002540, 3015497
+  )
+)
+
+proy_quito_futura <- proy_quito %>%
+  filter(anio >= 2023)
+
+anios_proyeccion <- proy_quito_futura$anio
+
+proy_quito_futura
+```
+
+# Modelos evaluados
+
+Se evaluaron cuatro modelos matemáticos para proyectar la participación parroquial:
+
+1. Modelo lineal;
+2. Modelo exponencial;
+3. Modelo logarítmico;
+4. Modelo polinómico de grado 2.
+
+Todos los modelos usan como variable dependiente la participación relativa de cada parroquia dentro del total cantonal.
+
+## Modelo lineal
+
+El modelo lineal asume que la participación parroquial cambia a una tasa constante en el tiempo:
+
+\[
+s_{i,t} = \alpha_i + \beta_i t + \varepsilon_{i,t}
+\]
+
+La participación proyectada para un año futuro \(T\) se obtiene mediante:
+
+\[
+\hat{s}_{i,T} = \hat{\alpha}_i + \hat{\beta}_i T
+\]
+
+Este modelo se utiliza como especificación base, debido a su simplicidad e interpretabilidad.
+
+```{r modelo-lineal}
+proy_lineal <- pob_censal_part %>%
+  group_by(area, grupo_parroquia) %>%
+  summarise(
+    intercepto = coef(lm(participacion ~ anio))[1],
+    pendiente  = coef(lm(participacion ~ anio))[2],
+    .groups = "drop"
+  ) %>%
+  crossing(anio = anios_proyeccion) %>%
+  mutate(
+    part_proy = intercepto + pendiente * anio,
+    modelo = "Lineal"
+  )
+
+proy_lineal
+```
+
+## Modelo exponencial
+
+El modelo exponencial asume que la participación cambia de manera proporcional o multiplicativa. Para estimarlo, se modela el logaritmo de la participación:
+
+\[
+\log(s_{i,t}) = \alpha_i + \beta_i t + \varepsilon_{i,t}
+\]
+
+Luego, la participación proyectada se obtiene regresando a la escala original:
+
+\[
+\hat{s}_{i,T} = e^{\hat{\alpha}_i + \hat{\beta}_i T}
+\]
+
+Este modelo permite capturar dinámicas donde las parroquias ganan o pierden participación a tasas relativas.
+
+```{r modelo-exponencial}
+proy_exponencial <- pob_censal_part %>%
+  filter(participacion > 0) %>%
+  group_by(area, grupo_parroquia) %>%
+  summarise(
+    intercepto = coef(lm(log(participacion) ~ anio))[1],
+    pendiente  = coef(lm(log(participacion) ~ anio))[2],
+    .groups = "drop"
+  ) %>%
+  crossing(anio = anios_proyeccion) %>%
+  mutate(
+    part_proy = exp(intercepto + pendiente * anio),
+    modelo = "Exponencial"
+  )
+
+proy_exponencial
+```
+
+## Modelo logarítmico
+
+El modelo logarítmico asume que los cambios en la participación son más intensos al inicio del período y tienden a suavizarse posteriormente:
+
+\[
+s_{i,t} = \alpha_i + \beta_i \log(t) + \varepsilon_{i,t}
+\]
+
+La participación proyectada es:
+
+\[
+\hat{s}_{i,T} = \hat{\alpha}_i + \hat{\beta}_i \log(T)
+\]
+
+Este modelo se considera útil para representar procesos de desaceleración en el cambio de participación.
+
+```{r modelo-logaritmico}
+proy_logaritmico <- pob_censal_part %>%
+  group_by(area, grupo_parroquia) %>%
+  summarise(
+    intercepto = coef(lm(participacion ~ log(anio)))[1],
+    pendiente  = coef(lm(participacion ~ log(anio)))[2],
+    .groups = "drop"
+  ) %>%
+  crossing(anio = anios_proyeccion) %>%
+  mutate(
+    part_proy = intercepto + pendiente * log(anio),
+    modelo = "Logaritmico"
+  )
+
+proy_logaritmico
+```
+
+## Modelo polinómico de grado 2
+
+El modelo polinómico de grado 2 permite representar trayectorias curvas de la participación parroquial:
+
+\[
+s_{i,t} = \alpha_i + \beta_{1i}t + \beta_{2i}t^2 + \varepsilon_{i,t}
+\]
+
+A diferencia de los modelos lineal, exponencial y logarítmico, este modelo requiere al menos tres observaciones para estimar la curvatura. Por ello, puede calcularse usando los censos 2001, 2010 y 2022, pero no puede incluirse en la validación retrospectiva formal 2001–2010 \(\rightarrow\) 2022.
+
+```{r modelo-polinomico}
+proy_polinomico <- pob_censal_part %>%
+  group_by(area, grupo_parroquia) %>%
+  group_modify(~{
+    
+    modelo_poly <- lm(participacion ~ poly(anio, 2, raw = TRUE), data = .x)
+    
+    tibble(
+      anio = anios_proyeccion,
+      part_proy = predict(
+        modelo_poly,
+        newdata = tibble(anio = anios_proyeccion)
+      )
+    )
+    
+  }) %>%
+  ungroup() %>%
+  mutate(
+    modelo = "Polinomico grado 2"
+  )
+
+proy_polinomico
+```
+
+# Unión de modelos, diagnóstico y normalización
+
+Se unen las proyecciones de participación generadas por los cuatro modelos. Posteriormente, se realiza un diagnóstico de posibles participaciones negativas. En caso de existir, estas deberían revisarse antes de continuar. En este ejercicio no se aplicó corrección porque el diagnóstico no identificó participaciones negativas.
+
+```{r unir-modelos}
+proyecciones_modelos <- bind_rows(
+  proy_lineal,
+  proy_exponencial,
+  proy_logaritmico,
+  proy_polinomico
+)
+
+participaciones_negativas <- proyecciones_modelos %>%
+  filter(part_proy < 0) %>%
+  arrange(modelo, anio, grupo_parroquia)
+
+participaciones_negativas
+```
+
+Como los modelos se estiman de manera independiente para cada parroquia, las participaciones proyectadas pueden no sumar exactamente 1 en cada año. Por ello, se normalizan por modelo y año.
+
+```{r normalizacion-participaciones}
+proyecciones_modelos_ajustadas <- proyecciones_modelos %>%
+  group_by(modelo, anio) %>%
+  mutate(
+    suma_part_anual = sum(part_proy, na.rm = TRUE),
+    part_ajustada = part_proy / suma_part_anual
+  ) %>%
+  ungroup()
+
+proyecciones_modelos_ajustadas
+```
+
+# Asignación de población proyectada por parroquia
+
+Una vez normalizadas las participaciones, se asigna la población proyectada a cada parroquia multiplicando la participación ajustada por el total oficial del cantón Quito para cada año.
+
+\[
+P_{i,T}^{proy(m)} =
+s_{i,T}^{ajustada(m)} \times P_{Q,T}^{oficial}
+\]
+
+```{r asignacion-poblacion}
+pob_modelos <- proyecciones_modelos_ajustadas %>%
+  left_join(proy_quito_futura, by = "anio") %>%
+  mutate(
+    pob_proy = round(part_ajustada * proy_quito, 0)
+  ) %>%
+  select(
+    modelo,
+    area,
+    grupo_parroquia,
+    anio,
+    part_proy,
+    part_ajustada,
+    proy_quito,
+    pob_proy
+  )
+
+pob_modelos
+```
+
+# Ajuste final por redondeo
+
+Debido a que la población parroquial se redondea a números enteros, pueden generarse pequeñas diferencias entre la suma de parroquias y el total oficial del cantón. Para corregir esta diferencia, se asigna el ajuste por redondeo a la parroquia con mayor población proyectada dentro de cada modelo y año, ya que el impacto relativo del ajuste es menor.
+
+```{r ajuste-redondeo}
+pob_modelos_ajustados <- pob_modelos %>%
+  group_by(modelo, anio) %>%
+  arrange(desc(pob_proy), .by_group = TRUE) %>%
+  mutate(
+    diferencia_redondeo = first(proy_quito) - sum(pob_proy, na.rm = TRUE),
+    pob_proy_ajustada = if_else(
+      row_number() == 1,
+      pob_proy + diferencia_redondeo,
+      pob_proy
+    )
+  ) %>%
+  ungroup() %>%
+  select(
+    modelo,
+    area,
+    grupo_parroquia,
+    anio,
+    part_proy,
+    part_ajustada,
+    proy_quito,
+    pob_proy = pob_proy_ajustada
+  )
+
+pob_modelos_ajustados
+```
+
+## Tabla comparativa de población proyectada por modelo
+
+Se genera una tabla en formato ancho para comparar, por parroquia y año, la población proyectada por cada modelo.
+
+```{r tabla-ancha-modelos}
+pob_modelos_ancha <- pob_modelos_ajustados %>%
+  select(
+    area,
+    grupo_parroquia,
+    anio,
+    modelo,
+    pob_proy
+  ) %>%
+  pivot_wider(
+    names_from = modelo,
+    values_from = pob_proy
+  ) %>%
+  rename(
+    Polinomico_grado_2 = `Polinomico grado 2`
+  ) %>%
+  arrange(area, grupo_parroquia, anio)
+
+pob_modelos_ancha
+```
+
+```{r tabla-ancha-modelos exportar, include=FALSE}
+write.xlsx(
+  pob_modelos_ancha,
+  file = "../02_RESULTADOS/pob_modelos_ancha.xlsx",
+  overwrite = TRUE
+)
+```
+
+# Validaciones
+
+## Consistencia con el total oficial del DMQ
+
+Como control técnico, se verifica que la suma de las poblaciones parroquiales proyectadas coincida con la proyección total oficial del cantón Quito para cada año y modelo.
+
+```{r validacion-consistencia}
+validacion_modelos <- pob_modelos_ajustados %>%
+  group_by(modelo, anio) %>%
+  summarise(
+    suma_parroquias = sum(pob_proy, na.rm = TRUE),
+    proy_quito = first(proy_quito),
+    diferencia = suma_parroquias - proy_quito,
+    .groups = "drop"
+  )
+
+validacion_modelos
+```
+
+## Desempeño retrospectivo de los modelos
+
+La validación retrospectiva permite evaluar la capacidad predictiva de los modelos. Para ello, se entrenan los modelos con los años 2001 y 2010, se estima la participación parroquial para 2022 y se compara la estimación con el dato real observado en 2022.
+
+El modelo polinómico de grado 2 no se incluye en esta validación porque requiere al menos tres observaciones para estimar su curvatura. Con solo 2001 y 2010 no es posible estimar adecuadamente una especificación cuadrática.
+
+### Base de entrenamiento y base real de comparación
+
+```{r bases-validacion-retrospectiva}
+base_train <- pob_censal_part %>%
+  filter(anio %in% c(2001, 2010))
+
+base_real_2022 <- pob_censal_part %>%
+  filter(anio == 2022) %>%
+  select(
+    area,
+    grupo_parroquia,
+    part_real_2022 = participacion,
+    pob_real_2022 = poblacion_parroquia
+  )
+```
+
+### Estimación retrospectiva: modelo lineal
+
+```{r validacion-lineal}
+val_lineal <- base_train %>%
+  group_by(area, grupo_parroquia) %>%
+  summarise(
+    intercepto = coef(lm(participacion ~ anio))[1],
+    pendiente  = coef(lm(participacion ~ anio))[2],
+    .groups = "drop"
+  ) %>%
+  mutate(
+    anio = 2022,
+    part_proy_2022 = intercepto + pendiente * anio,
+    modelo = "Lineal"
+  )
+
+val_lineal
+```
+
+### Estimación retrospectiva: modelo exponencial
+
+```{r validacion-exponencial}
+val_exponencial <- base_train %>%
+  filter(participacion > 0) %>%
+  group_by(area, grupo_parroquia) %>%
+  summarise(
+    intercepto = coef(lm(log(participacion) ~ anio))[1],
+    pendiente  = coef(lm(log(participacion) ~ anio))[2],
+    .groups = "drop"
+  ) %>%
+  mutate(
+    anio = 2022,
+    part_proy_2022 = exp(intercepto + pendiente * anio),
+    modelo = "Exponencial"
+  )
+
+val_exponencial
+```
+
+### Estimación retrospectiva: modelo logarítmico
+
+```{r validacion-logaritmico}
+val_logaritmico <- base_train %>%
+  group_by(area, grupo_parroquia) %>%
+  summarise(
+    intercepto = coef(lm(participacion ~ log(anio)))[1],
+    pendiente  = coef(lm(participacion ~ log(anio)))[2],
+    .groups = "drop"
+  ) %>%
+  mutate(
+    anio = 2022,
+    part_proy_2022 = intercepto + pendiente * log(anio),
+    modelo = "Logaritmico"
+  )
+
+val_logaritmico
+```
+
+### Cálculo de errores de validación retrospectiva
+
+Las participaciones estimadas se normalizan para que sumen 1 dentro de cada modelo. Luego se comparan con la participación real observada en 2022.
+
+```{r errores-validacion-retrospectiva}
+validacion_retrospectiva <- bind_rows(
+  val_lineal,
+  val_exponencial,
+  val_logaritmico
+) %>%
+  group_by(modelo, anio) %>%
+  mutate(
+    part_ajustada_2022 = part_proy_2022 / sum(part_proy_2022, na.rm = TRUE)
+  ) %>%
+  ungroup() %>%
+  left_join(
+    base_real_2022,
+    by = c("area", "grupo_parroquia")
+  ) %>%
+  mutate(
+    error_part = part_ajustada_2022 - part_real_2022,
+    error_abs_part = abs(error_part),
+    error_pct_part = if_else(
+      part_real_2022 > 0,
+      abs(error_part / part_real_2022) * 100,
+      NA_real_
+    )
+  )
+
+validacion_retrospectiva
+```
+
+### Métricas de desempeño retrospectivo
+
+Se utilizan dos métricas principales:
+
+\[
+MAE = \frac{1}{n}\sum_{i=1}^{n}|e_i|
+\]
+
+\[
+RMSE = \sqrt{\frac{1}{n}\sum_{i=1}^{n}e_i^2}
+\]
+
+Donde \(e_i\) es el error entre la participación estimada y la participación real de la parroquia \(i\).
+
+El MAE mide el error absoluto promedio. El RMSE penaliza con mayor fuerza los errores grandes.
+
+```{r metricas-retrospectivas}
+metricas_modelos <- validacion_retrospectiva %>%
+  group_by(modelo) %>%
+  summarise(
+    MAE_part = mean(error_abs_part, na.rm = TRUE),
+    RMSE_part = sqrt(mean(error_part^2, na.rm = TRUE)),
+    .groups = "drop"
+  ) %>%
+  arrange(MAE_part)
+
+metricas_modelos
+```
+
+### Mejor modelo retrospectivo general
+
+El modelo retrospectivo general se selecciona a partir del menor MAE, dado que esta métrica indica qué modelo se equivoca menos en promedio al estimar la participación parroquial de 2022.
+
+```{r mejor-modelo-retrospectivo}
+mejor_modelo_retrospectivo <- metricas_modelos %>%
+  slice_min(MAE_part, n = 1, with_ties = FALSE)
+
+mejor_modelo_retrospectivo
+```
+
+### Modelo con menor error por parroquia
+
+De manera complementaria, se identifica el modelo con menor error absoluto en cada parroquia. Este conteo no reemplaza al MAE, pero permite conocer la distribución territorial del mejor desempeño.
+
+```{r conteo-mejor-modelo-parroquia}
+mejor_modelo_por_parroquia <- validacion_retrospectiva %>%
+  group_by(area, grupo_parroquia) %>%
+  slice_min(error_abs_part, n = 1, with_ties = FALSE) %>%
+  ungroup() %>%
+  select(
+    area,
+    grupo_parroquia,
+    mejor_modelo_parroquia = modelo,
+    part_real_2022,
+    part_ajustada_2022,
+    error_abs_part,
+    error_pct_part
+  )
+
+conteo_mejor_modelo_parroquia <- mejor_modelo_por_parroquia %>%
+  count(mejor_modelo_parroquia, name = "n_parroquias") %>%
+  arrange(desc(n_parroquias))
+
+conteo_mejor_modelo_parroquia
+```
+
+### Parroquias con mayores errores retrospectivos
+
+```{r errores-mayores-retrospectiva}
+errores_mayores_retrospectiva <- validacion_retrospectiva %>%
+  arrange(desc(error_abs_part)) %>%
+  select(
+    modelo,
+    area,
+    grupo_parroquia,
+    part_real_2022,
+    part_ajustada_2022,
+    error_part,
+    error_abs_part,
+    error_pct_part
+  )
+
+errores_mayores_retrospectiva
+```
+
+### Gráfico comparativo de métricas de error
+
+```{r grafico-metricas-retrospectivas}
+metricas_modelos_larga <- metricas_modelos %>%
+  pivot_longer(
+    cols = c(MAE_part, RMSE_part),
+    names_to = "metrica",
+    values_to = "valor"
+  ) %>%
+  group_by(metrica) %>%
+  mutate(
+    limite_inferior = min(valor, na.rm = TRUE) * 0.995,
+    limite_superior = max(valor, na.rm = TRUE) * 1.005
+  ) %>%
+  ungroup() %>%
+  mutate(
+    metrica = recode(
+      metrica,
+      MAE_part = "MAE\nError absoluto promedio",
+      RMSE_part = "RMSE\nPenaliza errores grandes"
+    ),
+    etiqueta = format(round(valor, 7), scientific = FALSE)
+  )
+
+grafico_metricas_modelos <- ggplot(
+  metricas_modelos_larga,
+  aes(
+    x = reorder(modelo, valor),
+    y = valor
+  )
+) +
+  geom_col(width = 0.42) +
+  geom_text(
+    aes(label = etiqueta),
+    hjust = -0.10,
+    size = 3.3
+  ) +
+  coord_flip() +
+  facet_wrap(
+    ~ metrica,
+    scales = "free_x"
+  ) +
+  scale_y_continuous(
+    expand = expansion(mult = c(0.02, 0.25))
+  ) +
+  labs(
+    title = "Desempeño retrospectivo de los modelos",
+    subtitle = "Menor valor indica mejor desempeño retrospectivo",
+    x = NULL,
+    y = "Valor del error"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold", size = 13),
+    plot.subtitle = element_text(size = 10),
+    strip.text = element_text(face = "bold", size = 9),
+    axis.text.y = element_text(size = 9),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor = element_blank()
+  )
+
+grafico_metricas_modelos
+```
+
+### Gráfico de mejor modelo por parroquia
+
+```{r grafico-mejor-modelo-parroquia}
+conteo_mejor_modelo_parroquia_graf <- conteo_mejor_modelo_parroquia %>%
+  mutate(
+    porcentaje = n_parroquias / sum(n_parroquias) * 100,
+    etiqueta = paste0(n_parroquias, " (", round(porcentaje, 1), "%)")
+  ) %>%
+  arrange(desc(n_parroquias))
+
+grafico_mejor_modelo_parroquia <- ggplot(
+  conteo_mejor_modelo_parroquia_graf,
+  aes(
+    x = reorder(mejor_modelo_parroquia, n_parroquias),
+    y = n_parroquias
+  )
+) +
+  geom_col(width = 0.42) +
+  geom_text(
+    aes(label = etiqueta),
+    hjust = -0.12,
+    size = 3.4
+  ) +
+  coord_flip() +
+  scale_y_continuous(
+    expand = expansion(mult = c(0, 0.28))
+  ) +
+  labs(
+    title = "Modelo con menor error por parroquia",
+    subtitle = "Número y porcentaje de parroquias donde cada modelo presentó el menor error retrospectivo",
+    x = NULL,
+    y = "Número de parroquias"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold", size = 13),
+    plot.subtitle = element_text(size = 10),
+    axis.text.y = element_text(size = 10),
+    axis.text.x = element_text(size = 9),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor = element_blank()
+  )
+
+grafico_mejor_modelo_parroquia
+```
+
+## R² de los modelos
+
+El coeficiente de determinación \(R^2\) mide el grado de ajuste del modelo a los datos observados. Sin embargo, en este ejercicio se interpreta con cautela, debido a que se calcula sobre los tres años censales disponibles: 2001, 2010 y 2022.
+
+Este análisis no constituye una validación predictiva, ya que los modelos se evalúan sobre los mismos datos usados para su ajuste. En particular, el modelo polinómico de grado 2 puede presentar un \(R^2\) muy alto por construcción, dado que cuenta con tres observaciones y suficiente flexibilidad para ajustarse a ellas.
+
+### R² lineal
+
+```{r r2-lineal}
+r2_lineal <- pob_censal_part %>%
+  group_by(area, grupo_parroquia) %>%
+  summarise(
+    R2 = summary(lm(participacion ~ anio))$r.squared,
+    modelo = "Lineal",
+    .groups = "drop"
+  )
+```
+
+### R² exponencial
+
+```{r r2-exponencial}
+r2_exponencial <- pob_censal_part %>%
+  filter(participacion > 0) %>%
+  group_by(area, grupo_parroquia) %>%
+  summarise(
+    R2 = summary(lm(log(participacion) ~ anio))$r.squared,
+    modelo = "Exponencial",
+    .groups = "drop"
+  )
+```
+
+### R² logarítmico
+
+```{r r2-logaritmico}
+r2_logaritmico <- pob_censal_part %>%
+  group_by(area, grupo_parroquia) %>%
+  summarise(
+    R2 = summary(lm(participacion ~ log(anio)))$r.squared,
+    modelo = "Logaritmico",
+    .groups = "drop"
+  )
+```
+
+### R² polinómico grado 2
+
+```{r r2-polinomico}
+r2_polinomico <- pob_censal_part %>%
+  group_by(area, grupo_parroquia) %>%
+  summarise(
+    R2 = summary(lm(participacion ~ poly(anio, 2, raw = TRUE)))$r.squared,
+    modelo = "Polinomico grado 2",
+    .groups = "drop"
+  )
+```
+
+### Resumen de R² por modelo
+
+```{r resumen-r2}
+r2_modelos <- bind_rows(
+  r2_lineal,
+  r2_exponencial,
+  r2_logaritmico,
+  r2_polinomico
+)
+
+resumen_r2_modelos <- r2_modelos %>%
+  group_by(modelo) %>%
+  summarise(
+    R2_promedio = mean(R2, na.rm = TRUE),
+    R2_mediana = median(R2, na.rm = TRUE),
+    R2_min = min(R2, na.rm = TRUE),
+    R2_max = max(R2, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  arrange(desc(R2_promedio))
+
+resumen_r2_modelos
+```
+
+## Estabilidad prospectiva de los modelos
+
+La estabilidad prospectiva evalúa si las proyecciones 2023–2035 presentan trayectorias razonables o si algún modelo genera cambios anuales abruptos por parroquia.
+
+Este criterio no compara contra un dato futuro observado, porque no existe información real para 2023–2035. Su objetivo es revisar la plausibilidad de la trayectoria proyectada.
+
+### Construcción de la serie 2022–2035
+
+Se incorpora el dato real de 2022 como punto de partida común para todos los modelos y se agregan las proyecciones 2023–2035.
+
+```{r serie-estabilidad}
+pob_observada_2022 <- pob_censal_part %>%
+  filter(anio == 2022) %>%
+  select(
+    area,
+    grupo_parroquia,
+    anio,
+    part_serie = participacion,
+    pob_serie = poblacion_parroquia
+  )
+
+pob_proyectada_2023_2035 <- pob_modelos_ajustados %>%
+  select(
+    modelo,
+    area,
+    grupo_parroquia,
+    anio,
+    part_serie = part_ajustada,
+    pob_serie = pob_proy
+  )
+
+pob_observada_2022_por_modelo <- pob_modelos_ajustados %>%
+  distinct(modelo) %>%
+  crossing(pob_observada_2022)
+
+serie_2022_2035_modelos <- bind_rows(
+  pob_observada_2022_por_modelo,
+  pob_proyectada_2023_2035
+) %>%
+  arrange(modelo, area, grupo_parroquia, anio)
+
+serie_2022_2035_modelos
+```
+
+### Cálculo de cambios anuales
+
+```{r cambios-anuales}
+estabilidad_anual <- serie_2022_2035_modelos %>%
+  group_by(modelo, area, grupo_parroquia) %>%
+  arrange(anio, .by_group = TRUE) %>%
+  mutate(
+    cambio_abs_pob = pob_serie - lag(pob_serie),
+    cambio_pct_pob = if_else(
+      lag(pob_serie) > 0,
+      (pob_serie / lag(pob_serie) - 1) * 100,
+      NA_real_
+    ),
+    cambio_abs_part = part_serie - lag(part_serie)
+  ) %>%
+  ungroup()
+
+estabilidad_anual
+```
+
+### Resumen de estabilidad por modelo
+
+```{r resumen-estabilidad}
+eval_estabilidad_modelos <- estabilidad_anual %>%
+  group_by(modelo) %>%
+  summarise(
+    promedio_cambio_pct_anual = mean(abs(cambio_pct_pob), na.rm = TRUE),
+    mediana_cambio_pct_anual = median(abs(cambio_pct_pob), na.rm = TRUE),
+    max_cambio_pct_anual = max(abs(cambio_pct_pob), na.rm = TRUE),
+    promedio_cambio_part_anual = mean(abs(cambio_abs_part), na.rm = TRUE),
+    max_cambio_part_anual = max(abs(cambio_abs_part), na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  arrange(promedio_cambio_pct_anual)
+
+eval_estabilidad_modelos
+```
+
+### Parroquias con mayores saltos anuales
+
+```{r saltos-extremos}
+saltos_extremos_anuales <- estabilidad_anual %>%
+  filter(!is.na(cambio_pct_pob)) %>%
+  arrange(desc(abs(cambio_pct_pob))) %>%
+  select(
+    modelo,
+    area,
+    grupo_parroquia,
+    anio,
+    pob_serie,
+    cambio_abs_pob,
+    cambio_pct_pob,
+    cambio_abs_part
+  )
+
+saltos_extremos_anuales
+```
+
+### Revisión específica del modelo exponencial
+
+```{r saltos-exponencial}
+saltos_exponencial <- estabilidad_anual %>%
+  filter(modelo == "Exponencial", !is.na(cambio_pct_pob)) %>%
+  arrange(desc(abs(cambio_pct_pob))) %>%
+  select(
+    modelo,
+    area,
+    grupo_parroquia,
+    anio,
+    pob_serie,
+    cambio_abs_pob,
+    cambio_pct_pob,
+    cambio_abs_part
+  )
+
+saltos_exponencial
+```
+
+### Gráfico de estabilidad anual por modelo
+
+```{r grafico-estabilidad}
+grafico_estabilidad_modelos <- ggplot(
+  eval_estabilidad_modelos,
+  aes(
+    x = reorder(modelo, promedio_cambio_pct_anual),
+    y = promedio_cambio_pct_anual
+  )
+) +
+  geom_col(width = 0.42) +
+  geom_text(
+    aes(label = paste0(round(promedio_cambio_pct_anual, 2), "%")),
+    hjust = -0.12,
+    size = 3.4
+  ) +
+  coord_flip() +
+  scale_y_continuous(
+    expand = expansion(mult = c(0, 0.28))
+  ) +
+  labs(
+    title = "Estabilidad anual de las proyecciones por modelo",
+    subtitle = "Promedio del cambio porcentual anual absoluto por parroquia, 2022–2035",
+    x = NULL,
+    y = "Cambio porcentual anual promedio (%)"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold", size = 13),
+    plot.subtitle = element_text(size = 10),
+    axis.text.y = element_text(size = 10),
+    axis.text.x = element_text(size = 9),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor = element_blank()
+  )
+
+grafico_estabilidad_modelos
+```
+
+### Gráfico de saltos máximos por modelo
+
+```{r grafico-saltos-maximos}
+grafico_saltos_maximos <- ggplot(
+  eval_estabilidad_modelos,
+  aes(
+    x = reorder(modelo, max_cambio_pct_anual),
+    y = max_cambio_pct_anual
+  )
+) +
+  geom_col(width = 0.42) +
+  geom_text(
+    aes(label = paste0(round(max_cambio_pct_anual, 2), "%")),
+    hjust = -0.12,
+    size = 3.4
+  ) +
+  coord_flip() +
+  scale_y_continuous(
+    expand = expansion(mult = c(0, 0.28))
+  ) +
+  labs(
+    title = "Mayor salto anual proyectado por modelo",
+    subtitle = "Máximo cambio porcentual anual observado en una parroquia, 2022–2035",
+    x = NULL,
+    y = "Máximo cambio porcentual anual (%)"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold", size = 13),
+    plot.subtitle = element_text(size = 10),
+    axis.text.y = element_text(size = 10),
+    axis.text.x = element_text(size = 9),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor = element_blank()
+  )
+
+grafico_saltos_maximos
+```
+
+# Selección del modelo final
+
+La selección del modelo final se basa principalmente en dos criterios:
+
+1. **Desempeño retrospectivo**, que evalúa qué modelo estimó mejor la participación parroquial de 2022 usando únicamente los datos de 2001 y 2010;
+2. **Estabilidad prospectiva**, que evalúa si las trayectorias proyectadas entre 2022 y 2035 presentan cambios anuales razonables.
+
+El análisis de \(R^2\) se considera únicamente complementario, ya que mide ajuste sobre los años censales disponibles y no constituye una validación predictiva.
+
+A partir de estos criterios, se selecciona como modelo principal aquel que combine menor error retrospectivo promedio y mayor estabilidad en la trayectoria proyectada.
+
+```{r seleccion-modelo-final}
+modelo_final <- mejor_modelo_retrospectivo %>%
+  select(modelo, MAE_part, RMSE_part)
+
+modelo_final
+```
+
+# Base final del modelo seleccionado
+
+```{r base-modelo-final}
+nombre_modelo_final <- modelo_final$modelo[1]
+
+pob_modelo_final <- pob_modelos_ajustados %>%
+  filter(modelo == nombre_modelo_final) %>%
+  arrange(area, grupo_parroquia, anio)
+
+pob_modelo_final
+```
+
+# Proyección por sexo
+
+Para la desagregación de la población proyectada por sexo, se utilizó como referencia la composición observada en el Censo 2022. En primer lugar, se calculó para cada parroquia la proporción de hombres y mujeres a partir de la base persona, debido a que esta es la fuente que contiene la variable de sexo. Posteriormente, dichas proporciones fueron aplicadas a la población proyectada con el modelo exponencial por parroquia para el período 2023–2035.
+
+De esta manera, la población proyectada de hombres y mujeres se obtuvo multiplicando la población total proyectada de cada parroquia por la proporción hombre y mujer observada en 2022, respectivamente. Es decir, no se estimó un crecimiento diferenciado para cada sexo, sino que se mantuvo constante la composición porcentual registrada en el último censo disponible.
+
+```{r base-2022-sexo-prop}
+pob_2022_sexo_prop <- pob_01_10_22 %>%
+  select(
+    area,
+    grupo_parroquia,
+    pob_total_2022,
+    prop_hombre,
+    prop_mujer
+  )
+
+pob_2022_sexo_prop
+```
+
+```{r unir-modelo-y-calcular-sexo}
+pob_modelo_final <- pob_modelo_final %>%
+  left_join(
+    pob_2022_sexo_prop %>%
+      select(area, grupo_parroquia, prop_hombre, prop_mujer),
+    by = c("area", "grupo_parroquia")
+  ) %>%
+  mutate(
+    hombre = round(pob_proy * prop_hombre, 0),
+    mujer = round(pob_proy * prop_mujer, 0)
+  )
+
+pob_modelo_final
+
+```
+
+# Exportación de resultados
+
+```{r exportacion-resultados, eval=FALSE}
+write.xlsx(
+  list(
+    "poblacion_modelos" = pob_modelos_ajustados,
+    "tabla_ancha_modelos" = pob_modelos_ancha,
+    "validacion_total" = validacion_modelos,
+    "metricas_retrospectivas" = metricas_modelos,
+    "mejor_modelo_parroquia" = mejor_modelo_por_parroquia,
+    "conteo_modelo_parroquia" = conteo_mejor_modelo_parroquia,
+    "r2_modelos" = resumen_r2_modelos,
+    "estabilidad_modelos" = eval_estabilidad_modelos,
+    "poblacion_2022" = pob_2022_sexo_prop,
+    "modelo_final" = pob_modelo_final
+  ),
+  "../02_RESULTADOS/proyeccion_parroquial_modelos.xlsx",
+  overwrite = TRUE
+)
+```
+
+# Consideraciones finales
+
+La metodología propuesta permite desagregar la proyección cantonal de Quito hacia el nivel parroquial mediante un enfoque de participación relativa. Este procedimiento mantiene consistencia con el total oficial proyectado y permite comparar distintas especificaciones matemáticas de evolución territorial.
+
+El ejercicio debe interpretarse como una estimación tendencial de desagregación territorial y no como una proyección demográfica completa por componentes, debido a las limitaciones de información sobre nacimientos, defunciones y migración a escala parroquial.
+
+La validación retrospectiva permite aproximar la capacidad predictiva de los modelos, mientras que la estabilidad prospectiva permite revisar la plausibilidad de las trayectorias proyectadas hacia 2035. En conjunto, ambos criterios permiten seleccionar un modelo principal de desagregación territorial para las 65 parroquias del DMQ.
+
+# Bibliografía
+
+Instituto Nacional de Estadística y Censos. (2025). *Estimaciones y proyecciones de la población de Ecuador, revisión 2024: Nacional, provincial, cantonal y área de residencia urbano y rural*. INEC. <br>
+https://www.ecuadorencifras.gob.ec/documentos/web-inec/Poblacion_y_Demografia/Proyecciones_Poblacionales/censo_2022/revision_2024_areas/Boletin_tecnico_proy_rev2025_vfinal.pdf
