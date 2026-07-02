@@ -95,4 +95,5 @@ Los HTML generados deben ser equivalentes a los de `02_RESULTADOS/`. El archivo 
 
 - Instituto Nacional de Estadística y Censos. (2025). *Estimaciones y proyecciones de la población de Ecuador, revisión 2024*. INEC.
 - Oficio Nro. IIC-2026-0224-O — Instituto de Investigaciones de la Ciudad.
-- Circular Nro. GADDMQ-SGP-2026-C — Secretaría General de Planificación, GAD-DMQ.
+- 
+
