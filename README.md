@@ -14,7 +14,7 @@ Este repositorio contiene los insumos, resultados, rutinas de procesamiento y el
 Este repositorio representa un trabajo interdisciplinario:
 
 * **Metodología, Estimaciones y Proyecciones de Datos:** Desarrollado, calculado y validado por el **Instituto de Investigaciones de la Ciudad (IIC)**.
-* **Desarrollo del Visualizador Web y Organización:** Creado por la **Dirección de Gestión de la Información (DMGI)**.
+* **Desarrollo del Visualizador Web y Organización:** Creado por la 
 
 ## 🚀 Uso del Visualizador
 
@@ -95,5 +95,4 @@ Los HTML generados deben ser equivalentes a los de `02_RESULTADOS/`. El archivo 
 
 - Instituto Nacional de Estadística y Censos. (2025). *Estimaciones y proyecciones de la población de Ecuador, revisión 2024*. INEC.
 - Oficio Nro. IIC-2026-0224-O — Instituto de Investigaciones de la Ciudad.
-- 
 
